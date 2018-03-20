@@ -1,1 +1,1 @@
-SHOW GLOBAL STATUS variable_name=@p1;
+SHOW GLOBAL STATUS WHERE variable_name=@p1;
