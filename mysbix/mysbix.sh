@@ -86,7 +86,9 @@ done
 
 if [[ -f "${SQL%.sql}.sql" ]]; then
     rval=`mysql --defaults-file=${APP_DIR}/.my.conf -sNe "${ARGS} source ${SQL%.sql}.sql;" 2>/dev/null`
-    rval=`echo ${rval} | sed -s "s:^${SQL_ARGS[0]//p=} ::"`
+    if [[ `basename ${SQL%.sql}.sql` =~ (global_status|global_variables) ]]; then
+	rval=`echo ${rval} | sed -s "s:^${SQL_ARGS[0]//p=} ::"`
+    fi
     rcode="${?}"
     if [[ ${JSON} -eq 1 ]]; then
        echo '{'
