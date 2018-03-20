@@ -94,12 +94,12 @@ done
 
 count=1
 for arg in ${SQL_ARGS[@]}; do
-    ARGS+="SET @p${count}='${arg//p=}'; "
+    ARGS+="SET @p${count}=\"${arg//p=}\"; "
     let "count=count+1"
 done
 
 if [[ -f "${SQL%.sql}.sql" ]]; then
-    rval=`mysql -e "${ARGS} source ${SQL%.sql}.sql;" 2>/dev/null`
+    rval=`mysql -sN -e "${ARGS} source ${SQL%.sql}.sql;" 2>/dev/null`
     rcode="${?}"
     if [[ ${JSON} -eq 1 ]]; then
        echo '{'

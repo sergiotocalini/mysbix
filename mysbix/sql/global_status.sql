@@ -1,1 +1,3 @@
-show global status where Variable_name="@p1";
+SELECT	variable_value
+FROM	information_schema.global_status
+WHERE	variable_name=@p1;
