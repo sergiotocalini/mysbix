@@ -1,2 +1,4 @@
-auth_user="monitor"
-auth_pass="xxxxxxx"
+[client]
+user = monitor
+passord = xxxxxxx
+host = localhost
