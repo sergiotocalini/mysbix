@@ -21,7 +21,7 @@ APP_WEB="http://www.sergiotocalini.com.ar/"
 #  Load Oracle Environment
 # -------------------------
 #
-[ -f ${APP_DIR}/zapgix.conf ] && . ${APP_DIR}/zapgix.conf
+[ -f ${APP_DIR}/${APP_NAME%.*}.conf ] && . ${APP_DIR}/${APP_NAME%.*}.conf
 
 #
 #################################################################################
@@ -38,11 +38,8 @@ usage() {
     echo "  -a            Query arguments."
     echo "  -h            Displays this help message."
     echo "  -j            Jsonify output."
-    echo "  -p            Specify the auth_pass to connect to the databases."
-    echo "  -s ARG(str)   Query to PostgreSQL."
-    echo "  -u            Specify the auth_user to connect to the databases (default=postgres)."
+    echo "  -s ARG(str)   Query to MySQL."
     echo "  -v            Show the script version."
-    echo "  -U            Specify a unix user to execute the sentences (default=postgres)."
     echo ""
     echo "Please send any bug reports to sergiotocalini@gmail.com"
     exit 1
@@ -72,15 +69,6 @@ while getopts "s::a:s:uphvj:" OPTION; do
 	a)
 	    SQL_ARGS[${#SQL_ARGS[*]}]=${OPTARG}
 	    ;;
-	u)
-	    auth_user=${OPTARG}
-	    ;;
-	p)
-	    auth_pass=${OPTARG}
-	    ;;
-	U)
-	    UNIXUSER=${OPTARG}
-	    ;;
 	v)
 	    version
 	    ;;
@@ -90,8 +78,6 @@ while getopts "s::a:s:uphvj:" OPTION; do
     esac
 done
 
-[[ -z "${auth_pass}" ]] && export PGPASSWORD=${auth_pass}
-
 count=1
 for arg in ${SQL_ARGS[@]}; do
     ARGS+="SET @p${count}=\"${arg//p=}\"; "
@@ -99,7 +85,7 @@ for arg in ${SQL_ARGS[@]}; do
 done
 
 if [[ -f "${SQL%.sql}.sql" ]]; then
-    rval=`mysql -sN -e "${ARGS} source ${SQL%.sql}.sql;" 2>/dev/null`
+    rval=`mysql --defaults-file=${APP_DIR}/.my.conf -sNe "${ARGS} source ${SQL%.sql}.sql;" 2>/dev/null`
     rcode="${?}"
     if [[ ${JSON} -eq 1 ]]; then
        echo '{'
