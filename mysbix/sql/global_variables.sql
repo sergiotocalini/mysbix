@@ -1,0 +1,1 @@
+SELECT	@@GLOBAL.@p1;
