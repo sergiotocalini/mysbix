@@ -16,3 +16,6 @@ cp -rv ${SOURCE_DIR}/mysbix/zabbix_agentd.conf   ${ZABBIX_DIR}/zabbix_agentd.d/m
 sed -i "s|host = .*|host = \"${MYSQL_HOST}\"|g" ${ZABBIX_DIR}/scripts/agentd/mysbix/.my.conf
 sed -i "s|user = .*|user = \"${MYSQL_USER}\"|g" ${ZABBIX_DIR}/scripts/agentd/mysbix/.my.conf
 sed -i "s|password = .*|password = \"${MYSQL_PASS}\"|g" ${ZABBIX_DIR}/scripts/agentd/mysbix/.my.conf
+
+mysql -sNe "CREATE USER IF NOT EXISTS '${MYSQL_USER}'@'${MYSQL_HOST}' IDENTIFIED BY '${MYSQL_PASS}';"
+mysql -sNe "GRANT SELECT ON *.* TO '${MYSQL_USER}'@'${MYSQL_HOST}';"
