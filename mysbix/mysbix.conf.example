@@ -1,4 +1,4 @@
 [client]
 user = monitor
-passord = xxxxxxx
+password = xxxxxxx
 host = localhost
