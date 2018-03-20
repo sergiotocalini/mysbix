@@ -2,7 +2,15 @@
 SOURCE_DIR=$(dirname $0)
 ZABBIX_DIR=/etc/zabbix
 
+MYSQL_USER=${1:-monitor}
+MYSQL_PASS=${2}
+MYSQL_HOST=${3:-localhost}
+
 mkdir -p ${ZABBIX_DIR}/scripts/agentd/mysbix
 cp -r ${SOURCE_DIR}/mysbix/sql ${ZABBIX_DIR}/scripts/agentd/mysbix/
 cp ${SOURCE_DIR}/mysbix/mysbix.sh ${ZABBIX_DIR}/scripts/agentd/mysbix/
 cp ${SOURCE_DIR}/mysbix/zabbix_agentd.conf ${ZABBIX_DIR}/zabbix_agentd.d/mysbix.conf
+
+sed -i "s|host = .*|host = \"${MYSQL_HOST}\"|g" ${ZABBIX_DIR}/scripts/agentd/mysbix/mysbix.conf
+sed -i "s|user = .*|user = \"${MYSQL_USER}\"|g" ${ZABBIX_DIR}/scripts/agentd/mysbix/mysbix.conf
+sed -i "s|password = .*|password = \"${MYSQL_PASS}\"|g" ${ZABBIX_DIR}/scripts/agentd/mysbix/mysbix.conf
