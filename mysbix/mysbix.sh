@@ -49,6 +49,29 @@ version() {
     echo "${APP_NAME%.*} ${APP_VER}"
     exit 1
 }
+
+vert2json() {
+    sql_raw="${1}"
+    
+    json_raw=""
+    idx="${#rows[@]}"
+    while read line; do
+	if [[ "${line}" =~ ^\* ]]; then
+	    pos=${idx}
+	    let "idx=idx+1"
+	else
+	    key=`echo ${line}|awk -F: '{print $1}'|awk '{$1=$1};1'`
+	    val=`echo ${line}|awk -F: '{print $2}'|awk '{$1=$1};1'`
+	    rows[${pos}]+="\"${key}\":\"${val}\","
+	fi
+    done <<< "${sql_raw}"
+    
+    json_raw="[ "
+    for idx in ${!rows[@]}; do
+    	json_raw+="{${rows[${idx}]%?}},"
+    done
+    echo "${json_raw%?} ]"
+}
 #
 #################################################################################
 
@@ -85,9 +108,11 @@ for arg in ${SQL_ARGS[@]}; do
 done
 
 if [[ -f "${SQL%.sql}.sql" ]]; then
-    rval=`mysql --defaults-file=${APP_DIR}/.my.conf -sNe "${ARGS} source ${SQL%.sql}.sql;" 2>/dev/null`
+    rval=`mysql --defaults-file=${APP_DIR}/.my.conf -se "${ARGS} source ${SQL%.sql}.sql;" 2>/dev/null`
     if [[ `basename ${SQL%.sql}.sql` =~ (global_status|global_variables) ]]; then
 	rval=`echo ${rval} | sed -s "s:^${SQL_ARGS[0]//p=} ::"`
+    elif [[ `basename ${SQL%.sql}.sql` =~ replication_.* ]]; then
+	rval=$( vert2json "${rval}" )
     fi
     rcode="${?}"
     if [[ ${JSON} -eq 1 ]]; then
