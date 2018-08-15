@@ -108,7 +108,7 @@ for arg in ${SQL_ARGS[@]}; do
 done
 
 if [[ -f "${SQL%.sql}.sql" ]]; then
-    rval=`mysql --defaults-file=${APP_DIR}/.my.conf -se "${ARGS} source ${SQL%.sql}.sql;" 2>/dev/null`
+    rval=`mysql --defaults-file=${APP_DIR}/.my.conf -sEe "${ARGS} source ${SQL%.sql}.sql;" 2>/dev/null`
     if [[ `basename ${SQL%.sql}.sql` =~ (global_status|global_variables) ]]; then
 	rval=`echo ${rval} | sed -s "s:^${SQL_ARGS[0]//p=} ::"`
     elif [[ `basename ${SQL%.sql}.sql` =~ replication_.* ]]; then
