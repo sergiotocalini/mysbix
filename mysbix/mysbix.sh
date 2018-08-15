@@ -1,7 +1,6 @@
 #!/usr/bin/env ksh
-rcode=0
 PATH=/usr/local/bin:${PATH}
-
+IFS_DEFAULT="${IFS}"
 #################################################################################
 
 #################################################################################
@@ -50,9 +49,30 @@ version() {
     exit 1
 }
 
-vert2json() {
+vert2csv() {
     sql_raw="${1}"
+
+    IFS="${IFS_DEFAULT}"
+    json_raw=""
+    idx="${#rows[@]}"
+    while read line; do
+	if [[ "${line}" =~ ^\* ]]; then
+	    pos=${idx}
+	    let "idx=idx+1"
+	else
+	    rows[${pos}]+="${line}|"
+	fi
+    done <<< "${sql_raw}"
     
+    for idx in ${!rows[@]}; do
+    	echo "${rows[${idx}]%?}"
+    done
+}
+
+vert2json() {
+    sql="${1}"
+    attrs="${2:-.[]}"
+
     json_raw=""
     idx="${#rows[@]}"
     while read line; do
@@ -62,87 +82,155 @@ vert2json() {
 	else
 	    key=`echo ${line}|awk -F: '{print $1}'|awk '{$1=$1};1'`
 	    val=`echo ${line}|awk -F: '{print $2}'|awk '{$1=$1};1'`
+
 	    rows[${pos}]+="\"${key}\":\"${val}\","
 	fi
-    done <<< "${sql_raw}"
-    
+    done <<< "${sql}"
+
     json_raw="[ "
     for idx in ${!rows[@]}; do
-    	json_raw+="{${rows[${idx}]%?}},"
+	json_raw+="{${rows[${idx}]%?}},"
     done
-    echo "${json_raw%?} ]"
+    echo "${json_raw%?} ]" | jq -r "${attrs}" 2>/dev/null
 }
+
 #
 #################################################################################
 
 #################################################################################
-while getopts "s::a:s:uphvj:" OPTION; do
+while getopts "s::a:q:s:uphvj:" OPTION; do
     case ${OPTION} in
 	h)
 	    usage
 	    ;;
-	s)
+	q)
 	    SQL="${APP_DIR}/sql/${OPTARG}"
+	    ;;	    
+	s)
+	    SECTION="${OPTARG}"
 	    ;;
         j)
-            JSON=1
-	    #JSON_ATTR=${OPTARG}
-            IFS=":" JSON_ATTR=(${OPTARG})
+            IFS=":" JSON_ATTR=( ${OPTARG-:0} )
+	    IFS="${IFS_DEFAULT}"
             ;;
 	a)
-	    SQL_ARGS[${#SQL_ARGS[*]}]=${OPTARG}
+	    ARGS[${#ARGS[*]}]=${OPTARG//p=}
 	    ;;
 	v)
 	    version
 	    ;;
-         \?)
+        \?)
             exit 1
             ;;
     esac
 done
 
-count=1
-for arg in ${SQL_ARGS[@]}; do
-    ARGS+="SET @p${count}=\"${arg//p=}\"; "
-    let "count=count+1"
-done
+sql_exec() {
+    sql=${1}
+    sql_args=( ${2} )
+    sql_opts=${3}
+    
+    if [[ -f "${sql%.sql}.sql" ]]; then
+	count=1
+	for arg in ${sql_args[@]}; do
+	    params+="SET @p${count}=\"${arg}\"; "
+	    let "count=count+1"
+	done
 
-if [[ -f "${SQL%.sql}.sql" ]]; then
-    rval=`mysql --defaults-file=${APP_DIR}/.my.conf -sEe "${ARGS} source ${SQL%.sql}.sql;" 2>/dev/null`
-    if [[ `basename ${SQL%.sql}.sql` =~ (global_status|global_variables) ]]; then
-	rval=`echo ${rval} | sed -s "s:^${SQL_ARGS[0]//p=} ::"`
-    elif [[ `basename ${SQL%.sql}.sql` =~ replication_.* ]]; then
-	rval=$( vert2json "${rval}" )
+	rval=`mysql --defaults-file=${APP_DIR}/.my.conf \
+                    -${sql_opts:-N} -se "${params} source ${SQL%.sql}.sql; " 2>/dev/null`
+	echo "${rval}"
+	return 0
     fi
-    rcode="${?}"
-    if [[ ${JSON} -eq 1 ]]; then
-       echo '{'
-       echo '   "data":['
-       count=1
-       while read line; do
-          IFS="|" values=(${line})
-          output='{ '
-          for val_index in ${!values[*]}; do
-             output+='"'{#${JSON_ATTR[${val_index}]}}'":"'${values[${val_index}]}'"'
-             if (( ${val_index}+1 < ${#values[*]} )); then
-                output="${output}, "
-             fi
-          done 
-          output+=' }'
-          if (( ${count} < `echo ${rval}|wc -l` )); then
-             output="${output},"
-          fi
-          echo "      ${output}"
-          let "count=count+1"
-       done <<< ${rval}
-       echo '   ]'
-       echo '}'
+
+    return 1
+}
+
+discovery() {
+    sql=${1}
+    sql_args=( ${2} )
+
+    if [[ `basename ${sql%.sql}` =~ replication ]]; then
+	rval=$( sql_exec "${sql}" "${sql_args[*]}" "E" )
+	rval=$( vert2json "${rval}" ".[] | \"\(.Host)|\(.Server_id)|\(.Slave_UUID)\"" )
     else
-       echo ${rval:-0}
+	rval=$( sql_exec "${sql}" "${sql_args[*]}" )
     fi
-else
-    echo "ZBX_NOTSUPPORTED"
-    rcode="1"
+
+    echo "${rval}"
+}
+
+if [[ ${SECTION} == 'discovery' ]]; then
+    rval=$(discovery "${SQL}" "${ARGS[*]}" )
+    echo '{'
+    echo '   "data":['
+    count=1
+    while read line; do
+	if [[ ${line} != '' ]]; then
+            IFS="|" values=(${line})
+            output='{ '
+            for val_index in ${!values[*]}; do
+		output+='"'{#${JSON_ATTR[${val_index}]:-${val_index}}}'":"'${values[${val_index}]}'"'
+		if (( ${val_index}+1 < ${#values[*]} )); then
+                    output="${output}, "
+		fi
+            done 
+            output+=' }'
+            if (( ${count} < `echo ${rval}|wc -l` )); then
+		output="${output},"
+            fi
+            echo "      ${output}"
+	fi
+        let "count=count+1"
+    done <<< ${rval}
+    echo '   ]'
+    echo '}'
 fi
+
+# count=1
+# for arg in ${SQL_ARGS[@]}; do
+#     ARGS+="SET @p${count}=\"${arg//p=}\"; "
+#     let "count=count+1"
+# done
+
+# if [[ -f "${SQL%.sql}.sql" ]]; then
+#     rval=`mysql --defaults-file=${APP_DIR}/.my.conf -sNe "${ARGS} source ${SQL%.sql}.sql;" 2>/dev/null`
+#     if [[ `basename ${SQL%.sql}.sql` =~ (global_status|global_variables) ]]; then
+# 	rval=`echo ${rval} | sed -s "s:^${SQL_ARGS[0]//p=} ::"`
+#     elif [[ `basename ${SQL%.sql}.sql` =~ replication_(masters|slaves).* ]]; then
+# 	rval=$( vert2json "${rval}" "${SQL_ARGS[@]}" )
+#     fi
+#     rcode="${?}"
+#     if [[ ${JSON} -eq 1 ]]; then
+#        echo '{'
+#        echo '   "data":['
+#        count=1
+#        while read line; do
+# 	   if [[ ${line} != '' ]]; then
+#                IFS="|" values=(${line})
+#                output='{ '
+#                for val_index in ${!values[*]}; do
+# 		   output+='"'{#${JSON_ATTR[${val_index}]:-${val_index}}}'":"'${values[${val_index}]}'"'
+# 		   if (( ${val_index}+1 < ${#values[*]} )); then
+#                        output="${output}, "
+# 		   fi
+#                done 
+#                output+=' }'
+#                if (( ${count} < `echo ${rval}|wc -l` )); then
+# 		   output="${output},"
+#                fi
+#                echo "      ${output}"
+# 	   fi
+#            let "count=count+1"
+#        done <<< ${rval}
+#        echo '   ]'
+#        echo '}'
+#     else
+#        echo "${rval:-0}"
+#     fi
+# else
+#     echo "ZBX_NOTSUPPORTED"
+#     rcode="1"
+# fi
 
 exit ${rcode}
