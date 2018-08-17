@@ -137,7 +137,8 @@ while getopts "s::a:q:s:uphvj:" OPTION; do
 	    IFS="${IFS_DEFAULT}"
             ;;
 	a)
-	    ARGS[${#ARGS[*]}]=${OPTARG//p=}
+	    arg=${OPTARG//p=}
+	    [[ -n ${arg} ]] && ARGS[${#ARGS[*]}]=${arg}
 	    ;;
 	v)
 	    version
