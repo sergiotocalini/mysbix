@@ -13,9 +13,9 @@ Zabbix Agent - MySQL
 
 ## MySQL configuration
 
-    #~ cat /root/.my.cnf
+    #~ cat /etc/zabbix/scripts/agent/mysbix/.my.cnf
     [client]
-    user = "root"
+    user = "monitor"
     password = "xxxxx"
     #~
    
