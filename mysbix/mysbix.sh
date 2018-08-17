@@ -151,31 +151,34 @@ done
 if [[ `basename ${SQL%.sql}` =~ replication_(masters|slaves) ]]; then
     rval=$( sql_exec "${SQL}" "" "E" )
     [ ${?} != 0 ] && zabbix_not_support
-    if [[ ${#ARGS[*]} > 0 ]]; then
-	for arg in ${ARGS[@]}; do
-	    key=`echo ${arg}|awk -F: '{print $1}'|awk '{$1=$1};1'`
-	    val=`echo ${arg}|awk -F: '{print $2}'|awk '{$1=$1};1'`
-	    if [[ -n ${key} && -n ${val} ]]; then
-		selec[${#selec[@]}]=".${key}==\"${val}\""
+
+    if [[ -n ${rval} ]]; then
+	if [[ ${#ARGS[*]} > 0 ]]; then
+	    for arg in ${ARGS[@]}; do
+		key=`echo ${arg}|awk -F: '{print $1}'|awk '{$1=$1};1'`
+		val=`echo ${arg}|awk -F: '{print $2}'|awk '{$1=$1};1'`
+		if [[ -n ${key} && -n ${val} ]]; then
+		    selec[${#selec[@]}]=".${key}==\"${val}\""
+		else
+		    attrs[${#attrs[@]}]="\(.${arg})"
+		fi
+	    done
+	    filters[0]=".[]"
+	    filters[1]="select($( join " and" ${selec[@]} ))"
+	    filters[2]="\"$( join " | " ${attrs[@]:-'\(.)'} )\""
+	    filters=$( join "|" ${filters[@]} )
+	elif [[ `basename ${SQL%.sql}` == 'replication_masters' ]]; then
+	    if [[ ${JSON} -eq 1 ]]; then
+		filters=".[] | \"\(.Master_Host)|\(.Master_UUID)|\(.Master_Server_Id)\""
 	    else
-		attrs[${#attrs[@]}]="\(.${arg})"
+		filters=".[] | {Master_Host, Master_UUID, Master_Server_Id}"
 	    fi
-	done
-	filters[0]=".[]"
-	filters[1]="select($( join " and" ${selec[@]} ))"
-	filters[2]="\"$( join " | " ${attrs[@]:-'\(.)'} )\""
-	filters=$( join "|" ${filters[@]} )
-    elif [[ `basename ${SQL%.sql}` == 'replication_masters' ]]; then
-	if [[ ${JSON} -eq 1 ]]; then
-	    filters=".[] | \"\(.Master_Host)|\(.Master_UUID)|\(.Master_Server_Id)\""
-	else
-	    filters=".[] | {Master_Host, Master_UUID, Master_Server_Id}"
-	fi
-    elif [[ `basename ${SQL%.sql}` == 'replication_slaves' ]]; then
-	if [[ ${JSON} -eq 1 ]]; then
-	    filters=".[] | \"\(.Host)|\(.Server_id)|\(.Slave_UUID)|\(.Master_id)\""
-	else
-	    filters=".[] | {Host, Server_id, Slave_UUID, Master_id}"
+	elif [[ `basename ${SQL%.sql}` == 'replication_slaves' ]]; then
+	    if [[ ${JSON} -eq 1 ]]; then
+		filters=".[] | \"\(.Host)|\(.Server_id)|\(.Slave_UUID)|\(.Master_id)\""
+	    else
+		filters=".[] | {Host, Server_id, Slave_UUID, Master_id}"
+	    fi
 	fi
     fi
     rval=$( vert2json "${rval}" "${filters}" )
