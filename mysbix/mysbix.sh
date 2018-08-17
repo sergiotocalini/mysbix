@@ -163,9 +163,9 @@ if [[ `basename ${SQL%.sql}` =~ replication_(masters|slaves) ]]; then
 		    attrs[${#attrs[@]}]="\(.${arg})"
 		fi
 	    done
-	    filters[0]=".[]"
-	    filters[1]="select($( join " and" ${selec[@]} ))"
-	    filters[2]="\"$( join " | " ${attrs[@]:-'\(.)'} )\""
+	    filters[${#filters[@]}]=".[]"
+	    [[ ${#selec[*]} > 0 ]] && filters[${#filters[@]}]="select($( join " and" ${selec[@]} ))"
+	    [[ ${#attrs[*]} > 0 ]] && filters[${#filters[@]}]="\"$( join " | " ${attrs[@]:-'\(.)'} )\""
 	    filters=$( join "|" ${filters[@]} )
 	elif [[ `basename ${SQL%.sql}` == 'replication_masters' ]]; then
 	    if [[ ${JSON} -eq 1 ]]; then
