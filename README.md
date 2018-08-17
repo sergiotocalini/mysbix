@@ -4,10 +4,11 @@ Zabbix Agent - MySQL
 # Dependencies
 ## Packages
 * ksh
+* jq
 
 ### Debian/Ubuntu
 
-    #~ apt install ksh
+    #~ apt install ksh jq
     #~
 
 ## MySQL configuration
