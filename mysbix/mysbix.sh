@@ -180,8 +180,8 @@ if [[ `basename ${SQL%.sql}` =~ replication_(masters|slaves) ]]; then
 		filters=".[] | {Host, Server_id, Slave_UUID, Master_id}"
 	    fi
 	fi
+	rval=$( vert2json "${rval}" "${filters}" )
     fi
-    rval=$( vert2json "${rval}" "${filters}" )
 else
     rval=$( sql_exec "${SQL}" "${ARGS[*]}" )
     [ ${?} != 0 ] && zabbix_not_support
