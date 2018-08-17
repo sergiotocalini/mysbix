@@ -169,9 +169,9 @@ if [[ `basename ${SQL%.sql}` =~ replication_(masters|slaves) ]]; then
 	    filters=$( join "|" ${filters[@]} )
 	elif [[ `basename ${SQL%.sql}` == 'replication_masters' ]]; then
 	    if [[ ${JSON} -eq 1 ]]; then
-		filters=".[] | \"\(.Master_Host)|\(.Master_UUID)|\(.Master_Server_Id)\""
+		filters=".[] | \"\(.Master_Host)|\(.Master_Server_Id)\"|\(.Master_UUID)\""
 	    else
-		filters=".[] | {Master_Host, Master_UUID, Master_Server_Id}"
+		filters=".[] | {Master_Host, Master_Server_Id, Master_UUID}"
 	    fi
 	elif [[ `basename ${SQL%.sql}` == 'replication_slaves' ]]; then
 	    if [[ ${JSON} -eq 1 ]]; then
