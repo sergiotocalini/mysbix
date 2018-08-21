@@ -1,6 +1,8 @@
 # mysbix
 Zabbix Agent - MySQL
 
+* Replication: Masters and Slaves
+
 # Dependencies
 ## Packages
 * ksh
