@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <zabbix_export>
     <version>3.4</version>
-    <date>2018-08-20T18:22:40Z</date>
+    <date>2018-08-21T11:52:21Z</date>
     <groups>
         <group>
             <name>Templates/Databases</name>
@@ -1855,9 +1855,9 @@
                             <key>mysbix[replication_masters, Master_Server_Id:{#MASTER_ID}, Seconds_Behind_Master]</key>
                             <delay>5m</delay>
                             <history>30d</history>
-                            <trends>0</trends>
+                            <trends>90d</trends>
                             <status>0</status>
-                            <value_type>1</value_type>
+                            <value_type>3</value_type>
                             <allowed_hosts/>
                             <units/>
                             <snmpv3_contextname/>
@@ -1895,7 +1895,7 @@
                             <snmp_community/>
                             <snmp_oid/>
                             <key>mysbix[replication_masters, Master_Server_Id:{#MASTER_ID}, Slave_IO_Running]</key>
-                            <delay>10m</delay>
+                            <delay>5m</delay>
                             <history>30d</history>
                             <trends>90d</trends>
                             <status>0</status>
@@ -1930,11 +1930,11 @@
                                 <step>
                                     <type>5</type>
                                     <params>(.*)
-\1:No=0:Yes=1</params>
+\1:No=0:Yes=1:Connecting=2</params>
                                 </step>
                                 <step>
                                     <type>5</type>
-                                    <params>(No|Yes)(?=.*:\1=(\d))
+                                    <params>(No|Yes|Connecting)(?=.*:\1=(\d))
 \2</params>
                                 </step>
                             </preprocessing>
@@ -1948,7 +1948,7 @@
                             <snmp_community/>
                             <snmp_oid/>
                             <key>mysbix[replication_masters, Master_Server_Id:{#MASTER_ID}, Slave_SQL_Running]</key>
-                            <delay>10m</delay>
+                            <delay>5m</delay>
                             <history>30d</history>
                             <trends>90d</trends>
                             <status>0</status>
@@ -1996,7 +1996,49 @@
                             <master_item_prototype/>
                         </item_prototype>
                     </item_prototypes>
-                    <trigger_prototypes/>
+                    <trigger_prototypes>
+                        <trigger_prototype>
+                            <expression>{Template DB MySQL:mysbix[replication_masters, Master_Server_Id:{#MASTER_ID}, Slave_IO_Running].last(#3)}=0&#13;
+or&#13;
+{Template DB MySQL:mysbix[replication_masters, Master_Server_Id:{#MASTER_ID}, Slave_SQL_Running].last(#3)}=0</expression>
+                            <recovery_mode>0</recovery_mode>
+                            <recovery_expression/>
+                            <name>MySQL: Replication Master &quot;{#MASTER_HOST}&quot; is not running</name>
+                            <correlation_mode>0</correlation_mode>
+                            <correlation_tag/>
+                            <url/>
+                            <status>0</status>
+                            <priority>4</priority>
+                            <description>The replication is not running, please check the slave status.&#13;
+&#13;
+Slave_IO_Running: {ITEM.LASTVALUE1}&#13;
+Slave_SQL_Running: {ITEM.LASTVALUE2}</description>
+                            <type>0</type>
+                            <manual_close>1</manual_close>
+                            <dependencies/>
+                            <tags/>
+                        </trigger_prototype>
+                        <trigger_prototype>
+                            <expression>{Template DB MySQL:mysbix[replication_masters, Master_Server_Id:{#MASTER_ID}, Seconds_Behind_Master].min(#3)}&#13;
+&gt;&#13;
+{Template DB MySQL:mysbix[replication_masters, Master_Server_Id:{#MASTER_ID}, Seconds_Behind_Master].max(1h)}</expression>
+                            <recovery_mode>0</recovery_mode>
+                            <recovery_expression/>
+                            <name>MySQL: Replication Master &quot;{#MASTER_HOST}&quot; is not syncing</name>
+                            <correlation_mode>0</correlation_mode>
+                            <correlation_tag/>
+                            <url/>
+                            <status>0</status>
+                            <priority>3</priority>
+                            <description>The replication is not synced, please check the slave status.&#13;
+&#13;
+Seconds_Behind_Master: {ITEM.LASTVALUE1}</description>
+                            <type>0</type>
+                            <manual_close>1</manual_close>
+                            <dependencies/>
+                            <tags/>
+                        </trigger_prototype>
+                    </trigger_prototypes>
                     <graph_prototypes/>
                     <host_prototypes/>
                     <jmx_endpoint/>
